@@ -143,31 +143,5 @@ function getBook(id) {
   return data.find((d) => d.id === id);
 }
 
-const book = getBook(1);
+const books = getBooks();
 
-// const title = book.title;
-// const author = book.author;
-// title;
-// author;
-book;
-
-const { title, author, pages, genres, publicationDate, hasMovieAdaptation } = book; // Destructuring assignment
-
-console.log(title, author, genres);
-
-// const primaryGenre = genres[0]; // Accessing the first genre
-// const secondaryGenre = genres[1] || "No secondary genre"; // Fallback if no second genre exists
-
-const [primaryGenre, secondaryGenre, ...otherGenres] = genres; // Destructuring genres array
-
-console.log(primaryGenre, secondaryGenre, otherGenres);
-
-const newGenres = [...genres, "new genre"]; // Adding a new genre to the array
-console.log(newGenres);
-
-const updatedBook = { ...book, moviePublicationDate: "2001-12-19" , pages: 500}; // Creating a new object with book details and movie publication date
-console.log(updatedBook);
-
-
-const summary = `${title} is a ${primaryGenre} book by ${author}. It was published on ${publicationDate} and has ${pages + 77} pages.`;
-summary;
