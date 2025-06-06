@@ -145,3 +145,63 @@ function getBook(id) {
 
 const books = getBooks();
 
+const longBooksWithMovie = books
+  .filter((book) => book.pages > 500)
+  .filter((book) => book.hasMovieAdaptation);
+longBooksWithMovie;
+
+const adventureBooks = books
+  .filter((books) => books.genres.includes("adventure"))
+  .map((book) => book.title);
+adventureBooks;
+
+const pagesAllBooks = books.reduce((sum, book) => sum + book.pages, 0); // we can use [] as acc
+pagesAllBooks;
+
+const arr = [3, 7, 1, 9, 6];
+const sorted = arr.slice().sort((a, b) => a - b);
+sorted;
+arr;
+
+const sortedByPages = books.slice().sort((a, b) => a.pages - b.pages);
+sortedByPages;
+
+// 1) Add book object to array
+const newBook = {
+  id: 6,
+  title: "Harry Potter and the Chamber of Secrets",
+  author: "J. K. Rowling",
+};
+const booksAfterAdd = [...books, newBook];
+booksAfterAdd;
+
+// 2) Delete book object from array
+const booksAfterDelete = booksAfterAdd.filter((book) => book.id !== 3);
+booksAfterDelete;
+
+// 3) Update book object in the array
+const booksAfterUpdate = booksAfterDelete.map((book) =>
+  book.id === 4
+    ? {
+        // 先展开外层 book，保留它原有的 id, title, reviews 等字段
+        ...book,
+        // 修改最外层的 pages
+        pages: 1210,
+        // 关键：要修改 translations，必须把 translations 也做一次展开
+        translations: {
+          ...book.translations,
+          // 把 korean 覆盖成你想要的新值
+          korean: "방방방",
+        },
+        hasMovieAdaptation: false, // 也可以修改其他字段
+      }
+    : book
+);
+booksAfterUpdate;
+
+
+fetch("https://jsonplaceholder.typicode.com/todos")
+  .then((res) => res.json())
+  .then((data) => console.log(data));
+
+console.log("jonas");
