@@ -7,6 +7,20 @@ const messages = [
 ];
 
 export default function App() {
+  return (
+    <div>
+      <Steps />
+      <StepMessage step={1}>
+        <span>pass in content</span>
+      </StepMessage>
+      <StepMessage step={2}>
+        <span>pass in content</span>
+      </StepMessage>
+    </div>
+  );
+}
+
+function Steps() {
   const [step, setStep] = useState(1);
   const [isOpen, setIsOpen] = useState(true);
 
@@ -40,25 +54,18 @@ export default function App() {
             <div className={step >= 3 ? "active" : ""}>3</div>
           </div>
 
-          <p className="message">
-            Step {step}: {messages[step - 1]}
-          </p>
+          <StepMessage step={step}>
+            <span>{messages[step - 1]}</span>
+          </StepMessage>
 
           <div className="buttons">
-            <Button
-              textcolor="#fff"
-              bgcolor="#7950f2"
-              text="Previous"
-              onClick={handlePrevious}
-              emoji="◀️" 
-            />
-            <Button
-              textcolor="#fff"
-              bgcolor="#7950f2"
-              text="Next"
-              onClick={handleNext}
-              emoji="▶️"
-            />
+            {/* content between opening and closing tags of the component are passed as children prop -- this allows as to pass JSX into children components */}
+            <Button textcolor="#fff" bgcolor="#7950f2" onClick={handlePrevious}>
+              <span>◀️Previous</span>
+            </Button>
+            <Button textcolor="#fff" bgcolor="#7950f2" onClick={handleNext}>
+              <span>Next▶️</span>
+            </Button>
           </div>
         </div>
       )}
@@ -66,14 +73,23 @@ export default function App() {
   );
 }
 
-function Button({ textcolor, bgcolor, text, onClick, emoji }) {
+function StepMessage({ step, children }) {
+  return (
+    <div className="message">
+      <h3>Step {step}</h3>
+      {children}
+    </div>
+  );
+}
+
+function Button({ textcolor, bgcolor, onClick, children }) {
+  // children is a special prop keyword
   return (
     <button
       style={{ backgroundColor: bgcolor, color: textcolor }}
       onClick={onClick}
     >
-      <span>{emoji}</span>
-      {text}
+      {children}
     </button>
   );
 }
