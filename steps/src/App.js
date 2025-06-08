@@ -16,19 +16,20 @@ export default function App() {
       // react don't really mutate the old state, but created a new one, so react can diff the old and new state, so that it can and only update the parts that changed to optimize performance.
       // so, always tell react when and how you want to change the state by calling the state setter function, and react will take care of the rest behind the scenes, like re-render
       // on developer side, always treat state as immutable, and never mutate it directly.
-      setStep(step - 1);
+      setStep((s) => s - 1);
     }
   }
 
   function handleNext() {
     if (step < messages.length) {
-      setStep(step + 1);
+      // if the state is changed base on the curr state, we should use a callback function to get the current state, so that we can always get the latest state. Wait for the previous state to finish updating before updating the next state.
+      setStep((s) => s + 1);
     }
   }
 
   return (
     <>
-      <button className="close" onClick={() => setIsOpen(!isOpen)}>
+      <button className="close" onClick={() => setIsOpen((is) => !is)}>
         &times;
       </button>
       {isOpen && (
