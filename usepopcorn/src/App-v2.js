@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import StarRating from "./StarRating";
 
 const tempMovieData = [
@@ -51,37 +51,18 @@ const tempWatchedData = [
 const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
 
-const KEY = "f84fc31d";
+const KEY = "a3f8e855";
 
 export default function App() {
-  const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
   const [watched, setWatched] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("fate");
   const [selectedId, setSelectedId] = useState(null);
 
-  /*
-  useEffect(function () {
-    console.log("After initial render");
-  }, []);
-
-  useEffect(function () {
-    console.log("After every render");
-  });
-
-  useEffect(
-    function () {
-      console.log("D");
-    },
-    [query]
-  );
-
-  console.log("During render");
-*/
-
   function handleSelectMovie(id) {
-    setSelectedId((selectedId) => (id === selectedId ? null : id));
+    setSelectedId((selectedId) => (selectedId === id ? null : id));
   }
 
   function handleCloseMovie() {
@@ -91,40 +72,45 @@ export default function App() {
   function handleAddWatched(movie) {
     setWatched((watched) => [...watched, movie]);
   }
-
   function handleDeleteWatched(id) {
     setWatched((watched) => watched.filter((movie) => movie.imdbID !== id));
   }
 
+  // this useEffect functions could be a event handler function as well, because it only fetch the data when searching/typing event happens but not depends on mounting
   useEffect(
     function () {
       const controller = new AbortController();
-
       async function fetchMovies() {
         try {
           setIsLoading(true);
           setError("");
-
           const res = await fetch(
             `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
             { signal: controller.signal }
           );
 
-          if (!res.ok)
+          if (!res.ok) {
             throw new Error("Something went wrong with fetching movies");
+          }
 
           const data = await res.json();
-          if (data.Response === "False") throw new Error("Movie not found");
-
+          if (data.Response === "False") {
+            throw new Error("Movies not found");
+          }
+          // setMovies is also asynchronous and waiting for the data to be set
           setMovies(data.Search);
           setError("");
-        } catch (err) {
-          if (err.name !== "AbortError") {
-            console.log(err.message);
-            setError(err.message);
+          // // not working because the data is not set immediately
+          // console.log(movies);
+          // // work because this line is executed after data is set
+          // console.log("Movies fetched:", data.Search);
+        } catch (error) {
+          if (error.name !== "AbortError") {
+            setError(error.message);
           }
         } finally {
           setIsLoading(false);
+          console.log("Movies fetched:", movies);
         }
       }
 
@@ -133,13 +119,36 @@ export default function App() {
         setError("");
         return;
       }
-
-      handleCloseMovie();
       fetchMovies();
 
+      // avoid race conditions by aborting the previous fetch request while fast typing
       return function () {
         controller.abort();
       };
+      // // The following code demonstrates the execution order of async/await and the difference between microtasks and macrotasks.
+      // // This helps explain why the two setIsLoading calls in fetchMovies are not batched together by React:
+      // // Because the code after 'await' runs in a new microtask, the two setIsLoading calls are in different microtasks,
+      // // so React processes them separately and triggers two renders. Only the setState calls in the same microtask are batched together.
+      // // 1. output is XAYB
+      // async function foo() {
+      //   console.log("A"); // (1) synchronous execution
+      //   await fetchMovies(); // (2) encounter await, pause foo, return control
+      //   console.log("B"); // (4) after somePromise resolves, this line is queued as a microtask
+      // }
+      // console.log("X"); // (0) synchronous execution of global script
+      // foo(); // (1) call foo, enter the above process
+      // console.log("Y"); // (2) foo pauses at await, continue executing this synchronous code
+
+      // // 2. output is XABY
+      // async function foo() {
+      //   console.log("A");
+      //   // No await here, and no other asynchronous operations
+      //   console.log("B");
+      //   return 42;
+      // }
+      // console.log("X");
+      // foo();
+      // console.log("Y");
     },
     [query]
   );
@@ -160,7 +169,6 @@ export default function App() {
           )}
           {error && <ErrorMessage message={error} />}
         </Box>
-
         <Box>
           {selectedId ? (
             <MovieDetails
@@ -191,7 +199,7 @@ function Loader() {
 function ErrorMessage({ message }) {
   return (
     <p className="error">
-      <span>⛔️</span> {message}
+      <span>⛔</span>Error: {message}
     </p>
   );
 }
@@ -304,39 +312,35 @@ function Movie({ movie, onSelectMovie }) {
 
 function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
   const [movie, setMovie] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [userRating, setUserRating] = useState("");
+  const [userRating, setUserRating] = useState(0);
 
   const isWatched = watched.map((movie) => movie.imdbID).includes(selectedId);
-  const watchedUserRating = watched.find(
-    (movie) => movie.imdbID === selectedId
-  )?.userRating;
+  const watchedUserRating = isWatched
+    ? watched.find((movie) => movie.imdbID === selectedId).userRating
+    : 0;
 
   const {
     Title: title,
-    Year: year,
     Poster: poster,
+    Year: year,
     Runtime: runtime,
-    imdbRating,
+    Genre: genre,
+    Director: director,
+    Actors: actors,
     Plot: plot,
     Released: released,
-    Actors: actors,
-    Director: director,
-    Genre: genre,
+    imdbRating,
   } = movie;
 
   function handleAdd() {
     const newWatchedMovie = {
-      imdbID: selectedId,
-      title,
-      year,
-      poster,
+      ...movie,
       imdbRating: Number(imdbRating),
-      runtime: Number(runtime.split(" ").at(0)),
-      userRating,
+      runtime: Number(runtime.split(" ")[0]),
+      imdbID: selectedId,
+      userRating: userRating,
     };
-
-    onAddWatched(newWatchedMovie);
+    !isWatched && onAddWatched(newWatchedMovie);
     onCloseMovie();
   }
 
@@ -345,11 +349,14 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
       function callback(e) {
         if (e.code === "Escape") {
           onCloseMovie();
+          console.log("Closing movie details with Escape key");
         }
       }
 
       document.addEventListener("keydown", callback);
 
+      // listen to esc in movie details because it's when we actually want to close the movie details
+      // this is a cleanup function that removes the event listener when the component unmounts or re-renders, so we don't have multiple listeners created every time when component instance creates
       return function () {
         document.removeEventListener("keydown", callback);
       };
@@ -360,13 +367,14 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
   useEffect(
     function () {
       async function getMovieDetails() {
-        setIsLoading(true);
-        const res = await fetch(
+        if (!selectedId) return;
+
+        const response = await fetch(
           `http://www.omdbapi.com/?apikey=${KEY}&i=${selectedId}`
         );
-        const data = await res.json();
+        const data = await response.json();
+        console.log(data);
         setMovie(data);
-        setIsLoading(false);
       }
       getMovieDetails();
     },
@@ -375,69 +383,67 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
 
   useEffect(
     function () {
+      // title is initially undefined since movie is an empty object as the initial state
+      // once onclick event is triggered, movie is set with the fetched data
       if (!title) return;
       document.title = `Movie | ${title}`;
 
-      return function () {
+      function cleanUp() {
         document.title = "usePopcorn";
-        // console.log(`Clean up effect for movie ${title}`);
-      };
+        // JS closures means the function remembers the value of variables at the time it was created -- remembers the initial value
+        // so here title will always be the value of title when the effect was created
+        // this is useful for cleaning up side effects, like removing event listeners or resetting state
+        console.log(`Cleaning up effect for ${title}`);
+      }
+      return cleanUp;
     },
     [title]
   );
 
   return (
     <div className="details">
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <>
-          <header>
-            <button className="btn-back" onClick={onCloseMovie}>
-              &larr;
-            </button>
-            <img src={poster} alt={`Poster of ${movie} movie`} />
-            <div className="details-overview">
-              <h2>{title}</h2>
-              <p>
-                {released} &bull; {runtime}
-              </p>
-              <p>{genre}</p>
-              <p>
-                <span>⭐️</span>
-                {imdbRating} IMDb rating
-              </p>
-            </div>
-          </header>
-          <section>
-            <div className="rating">
-              {!isWatched ? (
-                <>
-                  <StarRating
-                    maxRating={10}
-                    size={24}
-                    onSetRating={setUserRating}
-                  />
-                  {userRating > 0 && (
-                    <button className="btn-add" onClick={handleAdd}>
-                      + Add to list
-                    </button>
-                  )}
-                </>
-              ) : (
-                <p>
-                  You rated with movie {watchedUserRating} <span>⭐️</span>
-                </p>
+      <header>
+        <button className="btn-back" onClick={onCloseMovie}>
+          ←
+        </button>
+        <img src={poster} alt={`Poster of ${title} movie`} />
+        <div className="details-overview">
+          <h2>{title}</h2>
+          <p>
+            {released} &bull; {runtime}
+          </p>
+          <p>{genre}</p>
+          <p>
+            <span>⭐</span> {imdbRating} IMDb rating
+          </p>
+        </div>
+      </header>
+
+      <section>
+        <div className="rating">
+          {!isWatched ? (
+            <>
+              <StarRating
+                maxRating={10}
+                size={24}
+                onSetRating={setUserRating}
+              />
+              {userRating > 0 && (
+                <button className="btn-add" onClick={handleAdd}>
+                  Add to Watched
+                </button>
               )}
-            </div>
-            <p>
-              <em>{plot}</em>
-            </p>
-            <p>Starring {actors}</p>
-            <p>Directed by {director}</p>
-          </section>
-        </>
-      )}
+            </>
+          ) : (
+            <p>You rated this movie {watchedUserRating} stars</p>
+          )}
+        </div>
+        <p>
+          <em>{plot}</em>
+        </p>
+        <p>Starring {actors}</p>
+        <p>Directed by {director}</p>
+      </section>
     </div>
   );
 }
@@ -457,15 +463,15 @@ function WatchedSummary({ watched }) {
         </p>
         <p>
           <span>⭐️</span>
-          <span>{avgImdbRating.toFixed(2)}</span>
+          <span>{avgImdbRating.toFixed(1)}</span>
         </p>
         <p>
           <span>🌟</span>
-          <span>{avgUserRating.toFixed(2)}</span>
+          <span>{avgUserRating.toFixed(1)}</span>
         </p>
         <p>
           <span>⏳</span>
-          <span>{avgRuntime} min</span>
+          <span>{avgRuntime.toFixed(0)} min</span>
         </p>
       </div>
     </div>
@@ -489,8 +495,8 @@ function WatchedMoviesList({ watched, onDeleteWatched }) {
 function WatchedMovie({ movie, onDeleteWatched }) {
   return (
     <li>
-      <img src={movie.poster} alt={`${movie.title} poster`} />
-      <h3>{movie.title}</h3>
+      <img src={movie.Poster} alt={`${movie.Title} poster`} />
+      <h3>{movie.Title}</h3>
       <div>
         <p>
           <span>⭐️</span>

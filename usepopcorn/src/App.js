@@ -58,7 +58,7 @@ export default function App() {
   const [watched, setWatched] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [query, setQuery] = useState("fate");
+  const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(null);
 
   function handleSelectMovie(id) {
@@ -78,12 +78,14 @@ export default function App() {
 
   useEffect(
     function () {
+      const controller = new AbortController();
       async function fetchMovies() {
         try {
           setIsLoading(true);
           setError("");
           const res = await fetch(
-            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
+            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
+            { signal: controller.signal }
           );
 
           if (!res.ok) {
@@ -94,17 +96,14 @@ export default function App() {
           if (data.Response === "False") {
             throw new Error("Movies not found");
           }
-          // setMovies is also asynchronous and waiting for the data to be set
           setMovies(data.Search);
-          // // not working because the data is not set immediately
-          // console.log(movies);
-          // // work because this line is executed after data is set
-          // console.log("Movies fetched:", data.Search);
+          setError("");
         } catch (error) {
-          setError(error.message);
+          if (error.name !== "AbortError") {
+            setError(error.message);
+          }
         } finally {
           setIsLoading(false);
-          console.log("Movies fetched:", movies);
         }
       }
 
@@ -113,31 +112,12 @@ export default function App() {
         setError("");
         return;
       }
+      handleCloseMovie();
       fetchMovies();
-      // // The following code demonstrates the execution order of async/await and the difference between microtasks and macrotasks.
-      // // This helps explain why the two setIsLoading calls in fetchMovies are not batched together by React:
-      // // Because the code after 'await' runs in a new microtask, the two setIsLoading calls are in different microtasks,
-      // // so React processes them separately and triggers two renders. Only the setState calls in the same microtask are batched together.
-      // // 1. output is XAYB
-      // async function foo() {
-      //   console.log("A"); // (1) synchronous execution
-      //   await fetchMovies(); // (2) encounter await, pause foo, return control
-      //   console.log("B"); // (4) after somePromise resolves, this line is queued as a microtask
-      // }
-      // console.log("X"); // (0) synchronous execution of global script
-      // foo(); // (1) call foo, enter the above process
-      // console.log("Y"); // (2) foo pauses at await, continue executing this synchronous code
 
-      // // 2. output is XABY
-      // async function foo() {
-      //   console.log("A");
-      //   // No await here, and no other asynchronous operations
-      //   console.log("B");
-      //   return 42;
-      // }
-      // console.log("X");
-      // foo();
-      // console.log("Y");
+      return function () {
+        controller.abort();
+      };
     },
     [query]
   );
@@ -151,7 +131,6 @@ export default function App() {
 
       <Main>
         <Box>
-          {/* {isLoading ? <Loader /> : <MovieList movies={movies} />} */}
           {isLoading && <Loader />}
           {!isLoading && !error && (
             <MovieList movies={movies} onSelectMovie={handleSelectMovie} />
@@ -249,31 +228,6 @@ function Box({ children }) {
   );
 }
 
-/*
-function WatchedBox() {
-  const [watched, setWatched] = useState(tempWatchedData);
-  const [isOpen2, setIsOpen2] = useState(true);
-
-  return (
-    <div className="box">
-      <button
-        className="btn-toggle"
-        onClick={() => setIsOpen2((open) => !open)}
-      >
-        {isOpen2 ? "–" : "+"}
-      </button>
-
-      {isOpen2 && (
-        <>
-          <WatchedSummary watched={watched} />
-          <WatchedMoviesList watched={watched} />
-        </>
-      )}
-    </div>
-  );
-}
-*/
-
 function MovieList({ movies, onSelectMovie }) {
   return (
     <ul className="list list-movies">
@@ -335,6 +289,23 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
 
   useEffect(
     function () {
+      function callback(e) {
+        if (e.code === "Escape") {
+          onCloseMovie();
+        }
+      }
+
+      document.addEventListener("keydown", callback);
+
+      return function () {
+        document.removeEventListener("keydown", callback);
+      };
+    },
+    [onCloseMovie]
+  );
+
+  useEffect(
+    function () {
       async function getMovieDetails() {
         if (!selectedId) return;
 
@@ -342,12 +313,24 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
           `http://www.omdbapi.com/?apikey=${KEY}&i=${selectedId}`
         );
         const data = await response.json();
-        console.log(data);
         setMovie(data);
       }
       getMovieDetails();
     },
     [selectedId]
+  );
+
+  useEffect(
+    function () {
+      if (!title) return;
+      document.title = `Movie | ${title}`;
+
+      function cleanUp() {
+        document.title = "usePopcorn";
+      }
+      return cleanUp;
+    },
+    [title]
   );
 
   return (
