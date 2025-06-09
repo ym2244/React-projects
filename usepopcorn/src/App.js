@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import StarRating from "./StarRating";
 
 const tempMovieData = [
   {
@@ -53,72 +54,98 @@ const average = (arr) =>
 const KEY = "a3f8e855";
 
 export default function App() {
-  const [movies, setMovies] = useState(tempMovieData);
-  const [watched, setWatched] = useState(tempWatchedData);
+  const [movies, setMovies] = useState([]);
+  const [watched, setWatched] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const query = "asdasdasd";
+  const [query, setQuery] = useState("fate");
+  const [selectedId, setSelectedId] = useState(null);
 
-  useEffect(function () {
-    async function fetchMovies() {
-      try {
-        setIsLoading(true);
-        const res = await fetch(
-          `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
-        );
+  function handleSelectMovie(id) {
+    setSelectedId((selectedId) => (selectedId === id ? null : id));
+  }
 
-        if (!res.ok) {
-          throw new Error("Something went wrong with fetching movies");
+  function handleCloseMovie() {
+    setSelectedId(null);
+  }
+
+  function handleAddWatched(movie) {
+    setWatched((watched) => [...watched, movie]);
+  }
+  function handleDeleteWatched(id) {
+    setWatched((watched) => watched.filter((movie) => movie.imdbID !== id));
+  }
+
+  useEffect(
+    function () {
+      async function fetchMovies() {
+        try {
+          setIsLoading(true);
+          setError("");
+          const res = await fetch(
+            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
+          );
+
+          if (!res.ok) {
+            throw new Error("Something went wrong with fetching movies");
+          }
+
+          const data = await res.json();
+          if (data.Response === "False") {
+            throw new Error("Movies not found");
+          }
+          // setMovies is also asynchronous and waiting for the data to be set
+          setMovies(data.Search);
+          // // not working because the data is not set immediately
+          // console.log(movies);
+          // // work because this line is executed after data is set
+          // console.log("Movies fetched:", data.Search);
+        } catch (error) {
+          setError(error.message);
+        } finally {
+          setIsLoading(false);
+          console.log("Movies fetched:", movies);
         }
-
-        const data = await res.json();
-        if (data.Response === "False") {
-          throw new Error("Movies not found");
-        }
-        // setMovies is also asynchronous and waiting for the data to be set
-        setMovies(data.Search);
-        // // not working because the data is not set immediately
-        // console.log(movies);
-        // // work because this line is executed after data is set
-        // console.log("Movies fetched:", data.Search);
-      } catch (error) {
-        console.log(error.message);
-        setError(error.message);
-      } finally {
-        setIsLoading(false);
       }
-    }
-    fetchMovies();
-    // // The following code demonstrates the execution order of async/await and the difference between microtasks and macrotasks.
-    // // This helps explain why the two setIsLoading calls in fetchMovies are not batched together by React:
-    // // Because the code after 'await' runs in a new microtask, the two setIsLoading calls are in different microtasks,
-    // // so React processes them separately and triggers two renders. Only the setState calls in the same microtask are batched together.
-    // // 1. output is XAYB
-    // async function foo() {
-    //   console.log("A"); // (1) synchronous execution
-    //   await fetchMovies(); // (2) encounter await, pause foo, return control
-    //   console.log("B"); // (4) after somePromise resolves, this line is queued as a microtask
-    // }
-    // console.log("X"); // (0) synchronous execution of global script
-    // foo(); // (1) call foo, enter the above process
-    // console.log("Y"); // (2) foo pauses at await, continue executing this synchronous code
 
-    // // 2. output is XABY
-    // async function foo() {
-    //   console.log("A");
-    //   // No await here, and no other asynchronous operations
-    //   console.log("B");
-    //   return 42;
-    // }
-    // console.log("X");
-    // foo();
-    // console.log("Y");
-  }, []);
+      if (query.length < 3) {
+        setMovies([]);
+        setError("");
+        return;
+      }
+      fetchMovies();
+      // // The following code demonstrates the execution order of async/await and the difference between microtasks and macrotasks.
+      // // This helps explain why the two setIsLoading calls in fetchMovies are not batched together by React:
+      // // Because the code after 'await' runs in a new microtask, the two setIsLoading calls are in different microtasks,
+      // // so React processes them separately and triggers two renders. Only the setState calls in the same microtask are batched together.
+      // // 1. output is XAYB
+      // async function foo() {
+      //   console.log("A"); // (1) synchronous execution
+      //   await fetchMovies(); // (2) encounter await, pause foo, return control
+      //   console.log("B"); // (4) after somePromise resolves, this line is queued as a microtask
+      // }
+      // console.log("X"); // (0) synchronous execution of global script
+      // foo(); // (1) call foo, enter the above process
+      // console.log("Y"); // (2) foo pauses at await, continue executing this synchronous code
+
+      // // 2. output is XABY
+      // async function foo() {
+      //   console.log("A");
+      //   // No await here, and no other asynchronous operations
+      //   console.log("B");
+      //   return 42;
+      // }
+      // console.log("X");
+      // foo();
+      // console.log("Y");
+    },
+    [query]
+  );
 
   return (
     <>
       <NavBar>
-        <Search />
+        <Search query={query} setQuery={setQuery} />
         <NumResults movies={movies} />
       </NavBar>
 
@@ -126,12 +153,28 @@ export default function App() {
         <Box>
           {/* {isLoading ? <Loader /> : <MovieList movies={movies} />} */}
           {isLoading && <Loader />}
-          {!isLoading && !error && <MovieList movies={movies} />}
+          {!isLoading && !error && (
+            <MovieList movies={movies} onSelectMovie={handleSelectMovie} />
+          )}
           {error && <ErrorMessage message={error} />}
         </Box>
         <Box>
-          <WatchedSummary watched={watched} />
-          <WatchedMoviesList watched={watched} />
+          {selectedId ? (
+            <MovieDetails
+              selectedId={selectedId}
+              onCloseMovie={handleCloseMovie}
+              onAddWatched={handleAddWatched}
+              watched={watched}
+            />
+          ) : (
+            <>
+              <WatchedSummary watched={watched} />
+              <WatchedMoviesList
+                watched={watched}
+                onDeleteWatched={handleDeleteWatched}
+              />
+            </>
+          )}
         </Box>
       </Main>
     </>
@@ -168,9 +211,7 @@ function Logo() {
   );
 }
 
-function Search() {
-  const [query, setQuery] = useState("");
-
+function Search({ query, setQuery }) {
   return (
     <input
       className="search"
@@ -233,19 +274,19 @@ function WatchedBox() {
 }
 */
 
-function MovieList({ movies }) {
+function MovieList({ movies, onSelectMovie }) {
   return (
-    <ul className="list">
+    <ul className="list list-movies">
       {movies?.map((movie) => (
-        <Movie movie={movie} key={movie.imdbID} />
+        <Movie movie={movie} key={movie.imdbID} onSelectMovie={onSelectMovie} />
       ))}
     </ul>
   );
 }
 
-function Movie({ movie }) {
+function Movie({ movie, onSelectMovie }) {
   return (
-    <li>
+    <li onClick={() => onSelectMovie(movie.imdbID)}>
       <img src={movie.Poster} alt={`${movie.Title} poster`} />
       <h3>{movie.Title}</h3>
       <div>
@@ -255,6 +296,105 @@ function Movie({ movie }) {
         </p>
       </div>
     </li>
+  );
+}
+
+function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
+  const [movie, setMovie] = useState({});
+  const [userRating, setUserRating] = useState(0);
+
+  const isWatched = watched.map((movie) => movie.imdbID).includes(selectedId);
+  const watchedUserRating = isWatched
+    ? watched.find((movie) => movie.imdbID === selectedId).userRating
+    : 0;
+
+  const {
+    Title: title,
+    Poster: poster,
+    Year: year,
+    Runtime: runtime,
+    Genre: genre,
+    Director: director,
+    Actors: actors,
+    Plot: plot,
+    Released: released,
+    imdbRating,
+  } = movie;
+
+  function handleAdd() {
+    const newWatchedMovie = {
+      ...movie,
+      imdbRating: Number(imdbRating),
+      runtime: Number(runtime.split(" ")[0]),
+      imdbID: selectedId,
+      userRating: userRating,
+    };
+    !isWatched && onAddWatched(newWatchedMovie);
+    onCloseMovie();
+  }
+
+  useEffect(
+    function () {
+      async function getMovieDetails() {
+        if (!selectedId) return;
+
+        const response = await fetch(
+          `http://www.omdbapi.com/?apikey=${KEY}&i=${selectedId}`
+        );
+        const data = await response.json();
+        console.log(data);
+        setMovie(data);
+      }
+      getMovieDetails();
+    },
+    [selectedId]
+  );
+
+  return (
+    <div className="details">
+      <header>
+        <button className="btn-back" onClick={onCloseMovie}>
+          ←
+        </button>
+        <img src={poster} alt={`Poster of ${title} movie`} />
+        <div className="details-overview">
+          <h2>{title}</h2>
+          <p>
+            {released} &bull; {runtime}
+          </p>
+          <p>{genre}</p>
+          <p>
+            <span>⭐</span> {imdbRating} IMDb rating
+          </p>
+        </div>
+      </header>
+
+      <section>
+        <div className="rating">
+          {!isWatched ? (
+            <>
+              <StarRating
+                maxRating={10}
+                size={24}
+                onSetRating={setUserRating}
+              />
+              {userRating > 0 && (
+                <button className="btn-add" onClick={handleAdd}>
+                  Add to Watched
+                </button>
+              )}
+            </>
+          ) : (
+            <p>You rated this movie {watchedUserRating} stars</p>
+          )}
+        </div>
+        <p>
+          <em>{plot}</em>
+        </p>
+        <p>Starring {actors}</p>
+        <p>Directed by {director}</p>
+      </section>
+    </div>
   );
 }
 
@@ -273,32 +413,36 @@ function WatchedSummary({ watched }) {
         </p>
         <p>
           <span>⭐️</span>
-          <span>{avgImdbRating}</span>
+          <span>{avgImdbRating.toFixed(1)}</span>
         </p>
         <p>
           <span>🌟</span>
-          <span>{avgUserRating}</span>
+          <span>{avgUserRating.toFixed(1)}</span>
         </p>
         <p>
           <span>⏳</span>
-          <span>{avgRuntime} min</span>
+          <span>{avgRuntime.toFixed(0)} min</span>
         </p>
       </div>
     </div>
   );
 }
 
-function WatchedMoviesList({ watched }) {
+function WatchedMoviesList({ watched, onDeleteWatched }) {
   return (
     <ul className="list">
       {watched.map((movie) => (
-        <WatchedMovie movie={movie} key={movie.imdbID} />
+        <WatchedMovie
+          movie={movie}
+          key={movie.imdbID}
+          onDeleteWatched={onDeleteWatched}
+        />
       ))}
     </ul>
   );
 }
 
-function WatchedMovie({ movie }) {
+function WatchedMovie({ movie, onDeleteWatched }) {
   return (
     <li>
       <img src={movie.Poster} alt={`${movie.Title} poster`} />
@@ -316,6 +460,13 @@ function WatchedMovie({ movie }) {
           <span>⏳</span>
           <span>{movie.runtime} min</span>
         </p>
+
+        <button
+          className="btn-delete"
+          onClick={() => onDeleteWatched(movie.imdbID)}
+        >
+          X
+        </button>
       </div>
     </li>
   );
