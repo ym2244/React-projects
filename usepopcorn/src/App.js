@@ -74,6 +74,9 @@ export default function App() {
       setIsLoading(false);
     }
     fetchMovies();
+    // 下面的代码是为了演示 async/await 的执行顺序
+    // 以及微任务和宏任务的执行顺序
+    // output is XAYB
     async function foo() {
       console.log("A"); // （1）同步执行
       await fetchMovies(); // （2）遇到 await，暂停 foo，返回控制权
