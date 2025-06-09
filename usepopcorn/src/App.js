@@ -55,10 +55,34 @@ const KEY = "a3f8e855";
 export default function App() {
   const [movies, setMovies] = useState(tempMovieData);
   const [watched, setWatched] = useState(tempWatchedData);
+  const [isLoading, setIsLoading] = useState(false);
+  const query = "fate";
 
-  fetch(`http://www.omdbapi.com/?apikey=${KEY}&s=Fate`)
-    .then((res) => res.json())
-    .then((data) => console.log(data));
+  useEffect(function () {
+    async function fetchMovies() {
+      setIsLoading(true);
+      const res = await fetch(
+        `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
+      );
+      const data = await res.json();
+      // setMovies is also asynchronous and waiting for the data to be set
+      setMovies(data.Search);
+      // // not working because the data is not set immediately
+      // console.log(movies);
+      // // work because this line is executed after data is set
+      // console.log("Movies fetched:", data.Search);
+      setIsLoading(false);
+    }
+    fetchMovies();
+    async function foo() {
+      console.log("A"); // （1）同步执行
+      await fetchMovies(); // （2）遇到 await，暂停 foo，返回控制权
+      console.log("B"); // （4）somePromise 解决后，这行作为微任务排队执行
+    }
+    console.log("X"); // （0）全局脚本的同步执行
+    foo(); // （1）调用 foo，进入上面流程
+    console.log("Y"); // （2）foo 遇到 await 暂停，继续执行这里的同步代码
+  }, []);
 
   return (
     <>
@@ -68,9 +92,7 @@ export default function App() {
       </NavBar>
 
       <Main>
-        <Box>
-          <MovieList movies={movies} />
-        </Box>
+        <Box>{isLoading ? <Loader /> : <MovieList movies={movies} />}</Box>
 
         <Box>
           <WatchedSummary watched={watched} />
@@ -78,6 +100,14 @@ export default function App() {
         </Box>
       </Main>
     </>
+  );
+}
+
+function Loader() {
+  return (
+    <div className="loader">
+      <span>Loading...</span>
+    </div>
   );
 }
 
