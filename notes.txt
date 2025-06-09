@@ -1,0 +1,35 @@
+1. triger
+
+2. render phase (asynchronous)
+    - it's asynchronous because setState function is not run immediately
+
+virtual DOM = react element tree
+    - rerendered onces triggered by state change or initial render
+    - updated react elements which make the new virtual DOM
+
+fiber tree 
+    - state is stored in the fiber tree
+    - mutable data structure. In the tree, for each react element and DOM element, there is a fiber, this fiber holds the actual component state, props and a queue of work
+    - after reconciliation, the queue of work will contain the DOM updates that are needed for that element
+    - computation of these DOM updates is performed by a diffing algorithm -> compare the new virtual DOM with the current (old) fiber tree
+
+reconciliation - done by reconciler, called fiber in react
+
+In diffing rules:
+    - same position + different type -> delete old element, insert new
+    - same position + same type -> pass in new props and attributes, but keep the old element and state
+    - key prop: let react to ditinguish between multiple instance of the same component type
+        - use key to let react know when to rerender a element even if same type same position and when to keep the old element when same key but different position
+
+state updates are batched
+
+produce second updated fiber tree + a list of all necessary DOM updates
+
+3. commit phase (synchronous - consistent UI over time)
+
+renderer: like react dom for web or remotion for videos
+    - will insert, delete and update the DOM elements so we end up with a updated DOM tree that reflects the new state of the application
+
+4. browser paint
+
+once browser realizes that the DOM has updated, it starts a new browser paint in order to visually update the UI on the screen

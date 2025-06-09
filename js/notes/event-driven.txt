@@ -1,0 +1,72 @@
+fetch("https://example.com") // 返回的是 Promise
+  .then((response) => {
+    // 不论是 200 还是 404，只要能连上服务器，就是 resolve 状态
+    if (!response.ok) {
+      throw new Error("HTTP 错误状态码: " + response.status);
+    }
+    return response.json();
+  })
+  .catch((err) => {
+    console.log("请求失败:", err);
+  })
+  .finally(() => {
+    console.log("fetch 请求完毕");
+  });
+
+不论是自己写的 Promise 对象，还是像 fetch() 这种基于 Promise 的 API，只要异步操作成功了，
+Promise 就会进入 resolved 状态并触发 .then()；
+如果失败则进入 rejected 状态并触发 .catch()；
+无论成功与否，.finally() 都会执行一次。
+如果在 .then() 成功之后接了 .catch()，只要没有错误，.catch() 是不会执行的。
+
+
+Promise 有三种状态：
+pending（进行中）
+fulfilled（已成功 → resolve）
+rejected（已失败 → reject）
+
+
+🔗 方法对应状态和触发条件
+方法	状态	触发条件
+.then()	fulfilled	只有在 Promise 成功（resolve）后执行
+.catch()	rejected	只有在 Promise 失败（reject）后执行
+.finally()	不论成败	无论是 resolve 还是 reject 都会执行
+
+
+
+html中的class是一个标签，用来
+-  CSS 选择器 - 样式挂钩
+-  JS 查询 - DOM 操作入口
+- 分组复用 - 多个元素用同一个class, 样式/行为统一化
+
+
+async function on single thread (js)
+-> there are call stack, event loop, microtask queue > task queue
+- microtask queue: promise, mutation observer, fetch, async/await
+- task queue: setTimeout, setInterval, setImmediate, requestAnimationFrame, I/O
+
+Promise.resolve() 和 Promise.reject()
+const p1 = Promise.resolve("成功");
+const p2 = Promise.reject("失败");
+
+
+addEventListener("click", (e) => {
+  console.log("点击了按钮");
+  // 这里的 this 是 window
+  console.log(this); // window
+});
+
+bubbling 用来做 delegation
+event flow：
+- capture: 事件从 window -> document -> target
+- Target Phase: 事件在目标元素上触发
+- bubbling: 事件从 target -> document -> window
+
+
+event-driven
+1. event loop: handling queues
+2. compared to message driven 
+3. how promise works -- the order of tasks going to the queue -- promise always return a promise
+4. event bubbling and capturing
+5. addEventListener syntax -- use 4.
+6. fetch API syntax -- trigered by event 
