@@ -56,35 +56,63 @@ export default function App() {
   const [movies, setMovies] = useState(tempMovieData);
   const [watched, setWatched] = useState(tempWatchedData);
   const [isLoading, setIsLoading] = useState(false);
-  const query = "fate";
+  const [error, setError] = useState("");
+  const query = "asdasdasd";
 
   useEffect(function () {
     async function fetchMovies() {
-      setIsLoading(true);
-      const res = await fetch(
-        `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
-      );
-      const data = await res.json();
-      // setMovies is also asynchronous and waiting for the data to be set
-      setMovies(data.Search);
-      // // not working because the data is not set immediately
-      // console.log(movies);
-      // // work because this line is executed after data is set
-      // console.log("Movies fetched:", data.Search);
-      setIsLoading(false);
+      try {
+        setIsLoading(true);
+        const res = await fetch(
+          `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
+        );
+
+        if (!res.ok) {
+          throw new Error("Something went wrong with fetching movies");
+        }
+
+        const data = await res.json();
+        if (data.Response === "False") {
+          throw new Error("Movies not found");
+        }
+        // setMovies is also asynchronous and waiting for the data to be set
+        setMovies(data.Search);
+        // // not working because the data is not set immediately
+        // console.log(movies);
+        // // work because this line is executed after data is set
+        // console.log("Movies fetched:", data.Search);
+      } catch (error) {
+        console.log(error.message);
+        setError(error.message);
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchMovies();
-    // 下面的代码是为了演示 async/await 的执行顺序
-    // 以及微任务和宏任务的执行顺序
-    // output is XAYB
-    async function foo() {
-      console.log("A"); // （1）同步执行
-      await fetchMovies(); // （2）遇到 await，暂停 foo，返回控制权
-      console.log("B"); // （4）somePromise 解决后，这行作为微任务排队执行
-    }
-    console.log("X"); // （0）全局脚本的同步执行
-    foo(); // （1）调用 foo，进入上面流程
-    console.log("Y"); // （2）foo 遇到 await 暂停，继续执行这里的同步代码
+    // // The following code demonstrates the execution order of async/await and the difference between microtasks and macrotasks.
+    // // This helps explain why the two setIsLoading calls in fetchMovies are not batched together by React:
+    // // Because the code after 'await' runs in a new microtask, the two setIsLoading calls are in different microtasks,
+    // // so React processes them separately and triggers two renders. Only the setState calls in the same microtask are batched together.
+    // // 1. output is XAYB
+    // async function foo() {
+    //   console.log("A"); // (1) synchronous execution
+    //   await fetchMovies(); // (2) encounter await, pause foo, return control
+    //   console.log("B"); // (4) after somePromise resolves, this line is queued as a microtask
+    // }
+    // console.log("X"); // (0) synchronous execution of global script
+    // foo(); // (1) call foo, enter the above process
+    // console.log("Y"); // (2) foo pauses at await, continue executing this synchronous code
+
+    // // 2. output is XABY
+    // async function foo() {
+    //   console.log("A");
+    //   // No await here, and no other asynchronous operations
+    //   console.log("B");
+    //   return 42;
+    // }
+    // console.log("X");
+    // foo();
+    // console.log("Y");
   }, []);
 
   return (
@@ -95,8 +123,12 @@ export default function App() {
       </NavBar>
 
       <Main>
-        <Box>{isLoading ? <Loader /> : <MovieList movies={movies} />}</Box>
-
+        <Box>
+          {/* {isLoading ? <Loader /> : <MovieList movies={movies} />} */}
+          {isLoading && <Loader />}
+          {!isLoading && !error && <MovieList movies={movies} />}
+          {error && <ErrorMessage message={error} />}
+        </Box>
         <Box>
           <WatchedSummary watched={watched} />
           <WatchedMoviesList watched={watched} />
@@ -107,10 +139,14 @@ export default function App() {
 }
 
 function Loader() {
+  return <p className="loader">Loading...</p>;
+}
+
+function ErrorMessage({ message }) {
   return (
-    <div className="loader">
-      <span>Loading...</span>
-    </div>
+    <p className="error">
+      <span>⛔</span>Error: {message}
+    </p>
   );
 }
 
