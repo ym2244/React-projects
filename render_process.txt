@@ -25,10 +25,14 @@ state updates are batched
 
 produce second updated fiber tree + a list of all necessary DOM updates
 
+render phase are pure function phases, render logic like useState and setState are processed here
+
 3. commit phase (synchronous - consistent UI over time)
 
 renderer: like react dom for web or remotion for videos
     - will insert, delete and update the DOM elements so we end up with a updated DOM tree that reflects the new state of the application
+
+commit phase will truely update the DOM and process all the impure functions that have effects like useEffect
 
 4. browser paint
 

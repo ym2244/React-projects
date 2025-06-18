@@ -1,26 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import StarRating from "./StarRating";
 
 const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
 
-const KEY = "f84fc31d";
+const KEY = "a3f8e855";
 
 export default function App() {
-  const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(null);
 
   // const [watched, setWatched] = useState([]);
+  // func in useState() should be pure, no arguments, and a callback function
   const [watched, setWatched] = useState(function () {
     const storedValue = localStorage.getItem("watched");
     return JSON.parse(storedValue);
   });
 
   function handleSelectMovie(id) {
-    setSelectedId((selectedId) => (id === selectedId ? null : id));
+    setSelectedId((selectedId) => (selectedId === id ? null : id));
   }
 
   function handleCloseMovie() {
@@ -31,8 +32,8 @@ export default function App() {
     setWatched((watched) => [...watched, movie]);
 
     // localStorage.setItem("watched", JSON.stringify([...watched, movie]));
+    // what about delete? -- same in handleDeleteWatched
   }
-
   function handleDeleteWatched(id) {
     setWatched((watched) => watched.filter((movie) => movie.imdbID !== id));
   }
@@ -47,29 +48,28 @@ export default function App() {
   useEffect(
     function () {
       const controller = new AbortController();
-
       async function fetchMovies() {
         try {
           setIsLoading(true);
           setError("");
-
           const res = await fetch(
             `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
             { signal: controller.signal }
           );
 
-          if (!res.ok)
+          if (!res.ok) {
             throw new Error("Something went wrong with fetching movies");
+          }
 
           const data = await res.json();
-          if (data.Response === "False") throw new Error("Movie not found");
-
+          if (data.Response === "False") {
+            throw new Error("Movies not found");
+          }
           setMovies(data.Search);
           setError("");
-        } catch (err) {
-          if (err.name !== "AbortError") {
-            console.log(err.message);
-            setError(err.message);
+        } catch (error) {
+          if (error.name !== "AbortError") {
+            setError(error.message);
           }
         } finally {
           setIsLoading(false);
@@ -81,7 +81,6 @@ export default function App() {
         setError("");
         return;
       }
-
       handleCloseMovie();
       fetchMovies();
 
@@ -101,14 +100,12 @@ export default function App() {
 
       <Main>
         <Box>
-          {/* {isLoading ? <Loader /> : <MovieList movies={movies} />} */}
           {isLoading && <Loader />}
           {!isLoading && !error && (
             <MovieList movies={movies} onSelectMovie={handleSelectMovie} />
           )}
           {error && <ErrorMessage message={error} />}
         </Box>
-
         <Box>
           {selectedId ? (
             <MovieDetails
@@ -139,7 +136,7 @@ function Loader() {
 function ErrorMessage({ message }) {
   return (
     <p className="error">
-      <span>⛔️</span> {message}
+      <span>⛔</span>Error: {message}
     </p>
   );
 }
@@ -169,7 +166,6 @@ function Search({ query, setQuery }) {
     function () {
       function callback(e) {
         if (document.activeElement === inputEl.current) return;
-
         if (e.code === "Enter") {
           inputEl.current.focus();
           setQuery("");
@@ -177,16 +173,13 @@ function Search({ query, setQuery }) {
       }
 
       document.addEventListener("keydown", callback);
-      return () => document.addEventListener("keydown", callback);
+      return function () {
+        document.removeEventListener("keydown", callback);
+      };
     },
+    // need setQuery in the dependency array => it's a "dependency" which is needed in this effect
     [setQuery]
   );
-
-  // useEffect(function () {
-  //   const el = document.querySelector(".search");
-  //   console.log(el);
-  //   el.focus();
-  // }, []);
 
   return (
     <input
@@ -225,31 +218,6 @@ function Box({ children }) {
     </div>
   );
 }
-
-/*
-function WatchedBox() {
-  const [watched, setWatched] = useState(tempWatchedData);
-  const [isOpen2, setIsOpen2] = useState(true);
-
-  return (
-    <div className="box">
-      <button
-        className="btn-toggle"
-        onClick={() => setIsOpen2((open) => !open)}
-      >
-        {isOpen2 ? "–" : "+"}
-      </button>
-
-      {isOpen2 && (
-        <>
-          <WatchedSummary watched={watched} />
-          <WatchedMoviesList watched={watched} />
-        </>
-      )}
-    </div>
-  );
-}
-*/
 
 function MovieList({ movies, onSelectMovie }) {
   return (
@@ -308,23 +276,6 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
     Genre: genre,
   } = movie;
 
-  // if (imdbRating > 8) return <p>Greatest ever!</p>;
-  // if (imdbRating > 8) [isTop, setIsTop] = useState(true);
-
-  // const [isTop, setIsTop] = useState(imdbRating > 8);
-  // console.log(isTop);
-  // useEffect(
-  //   function () {
-  //     setIsTop(imdbRating > 8);
-  //   },
-  //   [imdbRating]
-  // );
-
-  const isTop = imdbRating > 8;
-  console.log(isTop);
-
-  // const [avgRating, setAvgRating] = useState(0);
-
   function handleAdd() {
     const newWatchedMovie = {
       imdbID: selectedId,
@@ -339,9 +290,6 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
 
     onAddWatched(newWatchedMovie);
     onCloseMovie();
-
-    // setAvgRating(Number(imdbRating));
-    // setAvgRating((avgRating) => (avgRating + userRating) / 2);
   }
 
   useEffect(
@@ -413,9 +361,6 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
               </p>
             </div>
           </header>
-
-          {/* <p>{avgRating}</p> */}
-
           <section>
             <div className="rating">
               {!isWatched ? (
@@ -464,15 +409,15 @@ function WatchedSummary({ watched }) {
         </p>
         <p>
           <span>⭐️</span>
-          <span>{avgImdbRating.toFixed(2)}</span>
+          <span>{avgImdbRating.toFixed(1)}</span>
         </p>
         <p>
           <span>🌟</span>
-          <span>{avgUserRating.toFixed(2)}</span>
+          <span>{avgUserRating.toFixed(1)}</span>
         </p>
         <p>
           <span>⏳</span>
-          <span>{avgRuntime} min</span>
+          <span>{avgRuntime.toFixed(0)} min</span>
         </p>
       </div>
     </div>
@@ -496,8 +441,8 @@ function WatchedMoviesList({ watched, onDeleteWatched }) {
 function WatchedMovie({ movie, onDeleteWatched }) {
   return (
     <li>
-      <img src={movie.poster} alt={`${movie.title} poster`} />
-      <h3>{movie.title}</h3>
+      <img src={movie.Poster} alt={`${movie.Title} poster`} />
+      <h3>{movie.Title}</h3>
       <div>
         <p>
           <span>⭐️</span>

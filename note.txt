@@ -1,0 +1,3 @@
+derived state:
+- the constant that derived from existing state, props or context
+- will be recalculated on every render
