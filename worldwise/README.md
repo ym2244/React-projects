@@ -1,5 +1,5 @@
 # React + Vite
-npm create vite@latest
+npm create vite@4
 npm i
 npm run dev
 
@@ -19,3 +19,6 @@ import eslint from "vite-plugin-eslint";
 export default defineConfig({
   plugins: [react(), eslint()],
 });
+
+
+npm i react-router-dom@6

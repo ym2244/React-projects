@@ -2,6 +2,6 @@
 
 npm i
 
-npx create-react-app@latest .
+npx create-react-app@5 project-name
 
-npm create vite@latest .
+npm create vite@4
