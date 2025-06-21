@@ -2,6 +2,7 @@
 npm create vite@4
 npm i
 npm run dev
+npm run server
 
 npm install eslint vite-plugin-eslint eslint-config-react-app --save-dev
 
