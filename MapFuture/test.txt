@@ -1,3 +1,0 @@
-npm run server
-uvicorn main:app --reload
-npm run dev
